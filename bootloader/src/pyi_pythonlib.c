@@ -54,6 +54,7 @@ pyi_pylib_load(ARCHIVE_STATUS *status)
     char dllpath[PATH_MAX];
     char dllname[64];
     char *p;
+    const char *dllpath2;
     int len;
 
     /* Are we going to load the Python 2.x library? */
@@ -101,20 +102,20 @@ pyi_pylib_load(ARCHIVE_STATUS *status)
      * Look for Python library in homepath or temppath.
      * It depends on the value of mainpath.
      */
-    pyi_path_join(dllpath, status->mainpath, dllname);
+    dllpath2 = pyi_path_join(dllpath, status->mainpath, dllname, sizeof(dllpath));
 
-    VS("LOADER: Python library: %s\n", dllpath);
+    VS("LOADER: Python library: %s\n", dllpath2);
 
     /* Load the DLL */
-    dll = pyi_utils_dlopen(dllpath);
+    dll = pyi_utils_dlopen(dllpath2);
 
     /* Check success of loading Python library. */
     if (dll == 0) {
 #ifdef _WIN32
-        FATAL_WINERROR("LoadLibrary", "Error loading Python DLL '%s'.\n", dllpath);
+        FATAL_WINERROR("LoadLibrary", "Error loading Python DLL '%s'.\n", dllpath2);
 #else
         FATALERROR("Error loading Python lib '%s': dlopen: %s\n",
-                   dllpath, dlerror());
+                   dllpath2, dlerror());
 #endif
         return -1;
     }
@@ -461,15 +462,13 @@ pyi_pylib_start_python(ARCHIVE_STATUS *status)
     /* Set sys.path */
     if (is_py2) {
         /* sys.path = [mainpath] */
-        strncpy(pypath, status->mainpath, strlen(status->mainpath));
+        strncpy(pypath, status->mainpath, sizeof(pypath));
     }
     else {
         /* sys.path = [base_library, mainpath] */
-        strncpy(pypath, status->mainpath, strlen(status->mainpath));
-        strncat(pypath, PYI_SEPSTR, strlen(PYI_SEPSTR));
-        strncat(pypath, "base_library.zip", strlen("base_library.zip"));
-        strncat(pypath, PYI_PATHSEPSTR, strlen(PYI_PATHSEPSTR));
-        strncat(pypath, status->mainpath, strlen(status->mainpath));
+        strncpy(pypath, status->mainpath, sizeof(pypath));
+        pyi_path_append(pypath, "base_library.zip", sizeof(pypath));
+        pyi_pathlist_append(pypath, status->mainpath, sizeof(pypath));
     };
 
     /*

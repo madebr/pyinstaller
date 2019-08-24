@@ -110,6 +110,88 @@ pyi_path_basename(char *result, const char *path)
 }
 
 /*
+ * Append relpath to path.
+ * Joined path is returned without slash at the end.
+ *
+ * The argument path is modified and cannot be null.
+ *
+ * Returns NULL on failure.
+ */
+/* FIXME: Need to test for absolute relpath -- or mark this function as */
+/*        only for an relative relpath */
+char *
+pyi_path_append(char *path, const char *relpath, size_t size)
+{
+    const size_t len1 = strlen(path);
+    const size_t len2 = strlen(relpath);
+
+    /* +2 because separator and null terminator */
+    if (len1 + len2 + 2 > size) {
+        return NULL;
+    }
+
+    if (len1 > 0) {
+        if (path[len1 - 1] != PYI_SEP) {
+            path[len1] = PYI_SEP;
+            path[len1 + 1] = PYI_NULLCHAR;
+        }
+    }
+
+    if (len2 > 0) {
+        /* Remove trailing slash from relpath if present. */
+        if (relpath[len2 - 1] == PYI_SEP) {
+            /* Append relpath without slash. */
+            strncat(path, relpath, len2 - 1);
+        }
+        else {
+            /* relpath does not end with slash. */
+            strncat(path, relpath, len2);
+        }
+    }
+    return path;
+}
+
+/*
+ * Add path to the list of paths in paths.
+ * Joined path is returned without path separator at the end.
+ *
+ * The argument path is modified and cannot be null.
+ *
+ * Returns NULL on failure.
+ */
+/* FIXME: Need to test for absolute relpath -- or mark this function as */
+/*        only for an relative relpath */
+char *
+pyi_pathlist_append(char *paths, const char *path, size_t size)
+{
+    const size_t len1 = strlen(paths);
+    const size_t len2 = strlen(path);
+
+    /* +2 because path separator and null terminator */
+    if (len1 + len2 + 2 > size) {
+        return NULL;
+    }
+
+    if (paths[len1 - 1] != PYI_PATHSEP) {
+        paths[len1] = PYI_PATHSEP;
+        paths[len1 + 1] = PYI_NULLCHAR;
+    }
+
+    if (len2 > 0) {
+        /* Remove trailing path sepatator from path if present. */
+        if (path[len2 - 1] == PYI_PATHSEP) {
+            /* Append path without slash. */
+            strncat(paths, path, len2 - 1);
+        }
+        else {
+            /* relpath does not end with slash. */
+            strncat(paths, path, len2);
+        }
+    }
+    return paths;
+}
+
+/*
  * Join two path components.
  * Joined path is returned without slash at the end.
  *
@@ -119,47 +201,33 @@ pyi_path_basename(char *result, const char *path)
  *
  * Returns NULL on failure.
  */
-/* FIXME: Need to test for absolut path2 -- or mark this function as */
+/* FIXME: Need to test for absolute path2 -- or mark this function as */
 /*        only for an relative path2 */
 char *
-pyi_path_join(char *result, const char *path1, const char *path2)
+pyi_path_join(char *result, const char *path1, const char *path2, size_t size)
 {
-    size_t len = 0;
+    const size_t len1 = strlen(path1);
+    const size_t len2 = strlen(path2);
 
     if (NULL == result) {
-        len = strlen(path1) + strlen(path2) + 2;
-        result = malloc(len);
+        size = len1 + len2 + 2;
+        result = malloc(size);
 
         if (NULL == result) {
             return NULL;
         }
+    } else {
+        if ((len1 + len2 + 2) > size) {
+            return NULL;
+        }
+    }
 
-        memset(result, 0, len);
-    }
-    else {
-        memset(result, 0, PATH_MAX);
-    }
-    /* Copy path1 to result without null terminator */
-    strncpy(result, path1, strlen(path1));
-    /* Append trailing slash if missing. */
-    len = strlen(result);
+    /* Copy path to result */
+    strcpy(result, path1);
+    result[len1] = PYI_NULLCHAR;
 
-    if (result[len - 1] != PYI_SEP) {
-        result[len] = PYI_SEP;
-        result[len + 1] = PYI_NULLCHAR;
-    }
-    /* Remove trailing slash from path2 if present. */
-    len = strlen(path2);
-
-    if (path2[len - 1] == PYI_SEP) {
-        /* Append path2 without slash. */
-        strncat(result, path2, len - 2);
-    }
-    else {
-        /* path2 does not end with slash. */
-        strcat(result, path2);
-    }
-    return result;
+    /* Append path2 to result */
+    return pyi_path_append(result, path2, size);
 }
 
 /* Normalize a pathname. Return result in new buffer. */
@@ -204,8 +272,8 @@ int
 pyi_search_path(char * result, const char * appname)
 {
     char * path = pyi_getenv("PATH");
-    char dirname[PATH_MAX + 1];
-    char filename[PATH_MAX + 1];
+    char dirname[PATH_MAX];
+    char filename[PATH_MAX];
 
     if (NULL == path) {
         return -1;
@@ -226,7 +294,7 @@ pyi_search_path(char * result, const char * appname)
         else {  /* last $PATH element */
             strncpy(dirname, path, PATH_MAX);
         }
-        pyi_path_join(filename, dirname, appname);
+        pyi_path_join(filename, dirname, appname, PATH_MAX);
 
         if (pyi_path_exists(filename)) {
             strncpy(result, filename, PATH_MAX);

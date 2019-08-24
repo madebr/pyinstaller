@@ -508,7 +508,7 @@ pyi_launch_initialize(ARCHIVE_STATUS * status)
     manifest = pyi_arch_get_option(status, "pyi-windows-manifest-filename");
 
     if (NULL != manifest) {
-        manifest = pyi_path_join(NULL, status->mainpath, manifest);
+        manifest = pyi_path_join(NULL, status->mainpath, manifest, 0U);
         CreateActContext(manifest);
         free(manifest);
     }

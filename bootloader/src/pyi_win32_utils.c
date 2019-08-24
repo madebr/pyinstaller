@@ -249,7 +249,7 @@ pyi_win32_wcs_to_mbs_sfn(const wchar_t *wstr)
  *  Returns NULL and logs error reason if encoding fails.
  */
 char *
-pyi_win32_utf8_to_mbs_sfn_keep_basename(char * dest, const char * src)
+pyi_win32_utf8_to_mbs_sfn_keep_basename(char * dest, const char * src, size_t size)
 {
     char * mbs_buffer;
     char * mbs_sfn_buffer;
@@ -273,7 +273,7 @@ pyi_win32_utf8_to_mbs_sfn_keep_basename(char * dest, const char * src)
 
     pyi_path_basename(basename, mbs_buffer);
     pyi_path_dirname(dirname, mbs_sfn_buffer);
-    pyi_path_join(dest, dirname, basename);
+    pyi_path_join(dest, dirname, basename, size);
     free(mbs_buffer);
     free(mbs_sfn_buffer);
     return dest;
